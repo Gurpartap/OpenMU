@@ -4,6 +4,7 @@
 
 namespace MUnique.OpenMU.Network
 {
+    using System;
     using System.Collections.Generic;
 
     /// <summary>
@@ -14,7 +15,7 @@ namespace MUnique.OpenMU.Network
         private readonly ICollection<IEncryptor> encryptors = new List<IEncryptor>(2);
 
         /// <inheritdoc />
-        public byte[] Encrypt(byte[] packet)
+        public Span<byte> Encrypt(Span<byte> packet)
         {
             var result = packet;
             foreach (var encryptor in this.encryptors)

@@ -4,6 +4,8 @@
 
 namespace MUnique.OpenMU.Network.Xor
 {
+    using System;
+
     /// <summary>
     /// An encryptor which XOR-encrypts data using a 3-byte key.
     /// </summary>
@@ -24,7 +26,7 @@ namespace MUnique.OpenMU.Network.Xor
         }
 
         /// <inheritdoc/>
-        public byte[] Encrypt(byte[] data)
+        public Span<byte> Encrypt(Span<byte> data)
         {
             return this.InternalEncrypt(data);
         }
@@ -39,8 +41,7 @@ namespace MUnique.OpenMU.Network.Xor
         /// Internal encrypt function. XORs each byte with one byte of the 3-byte key.
         /// </summary>
         /// <param name="data">The data.</param>
-        /// <returns>The encrypted data.</returns>
-        protected byte[] InternalEncrypt(byte[] data)
+        protected Span<byte> InternalEncrypt(Span<byte> data)
         {
             for (var i = 0; i < data.Length - this.startOffset; i++)
             {

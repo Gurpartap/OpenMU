@@ -4,6 +4,8 @@
 
 namespace MUnique.OpenMU.Network.SimpleModulus
 {
+    using System;
+
     /// <summary>
     /// The base class for the "simple modulus" encryption.
     /// </summary>
@@ -36,16 +38,6 @@ namespace MUnique.OpenMU.Network.SimpleModulus
         protected Counter Counter { get; } = new Counter();
 
         /// <summary>
-        /// Gets the decrypted block buffer.
-        /// </summary>
-        protected byte[] DecryptedBlockBuffer { get; } = new byte[DecryptedBlockSize];
-
-        /// <summary>
-        /// Gets the encrypted block buffer.
-        /// </summary>
-        protected byte[] EncryptedBlockBuffer { get; } = new byte[EncryptedBlockSize];
-
-        /// <summary>
         /// Gets the ring buffer.
         /// </summary>
         protected uint[] RingBuffer { get; } = new uint[4];
@@ -76,7 +68,7 @@ namespace MUnique.OpenMU.Network.SimpleModulus
         /// <param name="shiftArray">The shift array with the input data.</param>
         /// <param name="shiftOffset">The shift offset.</param>
         /// <param name="size">The size of the input data.</param>
-        protected void InternalShiftBytes(byte[] outputBuffer, int outputOffset, byte[] shiftArray, int shiftOffset, int size)
+        protected void InternalShiftBytes(Span<byte> outputBuffer, int outputOffset, Span<byte> shiftArray, int shiftOffset, int size)
         {
             shiftOffset &= 0x7;
             ShiftRight(shiftArray, size, shiftOffset);
@@ -99,7 +91,7 @@ namespace MUnique.OpenMU.Network.SimpleModulus
         /// <param name="packet">The packet.</param>
         /// <param name="decrypted">if set to <c>true</c> it is decrypted. Encrypted packets additionally contain a counter.</param>
         /// <returns>The size of the actual content.</returns>
-        protected int GetContentSize(byte[] packet, bool decrypted)
+        protected int GetContentSize(Span<byte> packet, bool decrypted)
         {
             return packet.GetPacketSize() - packet.GetPacketHeaderSize() + (decrypted ? 1 : 0);
         }
@@ -126,7 +118,7 @@ namespace MUnique.OpenMU.Network.SimpleModulus
             this.ShiftBuffer[3] = 0;
         }
 
-        private static void ShiftLeft(byte[] data, int size, int shift)
+        private static void ShiftLeft(Span<byte> data, int size, int shift)
         {
             if (shift == 0)
             {
@@ -141,7 +133,7 @@ namespace MUnique.OpenMU.Network.SimpleModulus
             data[0] >>= shift;
         }
 
-        private static void ShiftRight(byte[] data, int size, int shift)
+        private static void ShiftRight(Span<byte> data, int size, int shift)
         {
             if (shift == 0)
             {

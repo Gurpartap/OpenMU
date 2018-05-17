@@ -4,6 +4,8 @@
 
 namespace MUnique.OpenMU.Network
 {
+    using System;
+
     /// <summary>
     /// This interface specifies an encryptor, which encrypts data packets.
     /// </summary>
@@ -14,7 +16,7 @@ namespace MUnique.OpenMU.Network
         /// </summary>
         /// <param name="packet">The decrypted data packet.</param>
         /// <returns>The encrypted data packet.</returns>
-        byte[] Encrypt(byte[] packet);
+        Span<byte> Encrypt(Span<byte> packet);
 
         /// <summary>
         /// Resets the state of the encryptor.

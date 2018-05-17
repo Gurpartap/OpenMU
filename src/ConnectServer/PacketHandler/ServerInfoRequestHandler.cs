@@ -4,6 +4,7 @@
 
 namespace MUnique.OpenMU.ConnectServer.PacketHandler
 {
+    using System;
     using log4net;
 
     /// <summary>
@@ -26,7 +27,7 @@ namespace MUnique.OpenMU.ConnectServer.PacketHandler
         }
 
         /// <inheritdoc/>
-        public void HandlePacket(Client client, byte[] packet)
+        public void HandlePacket(Client client, Span<byte> packet)
         {
             var serverId = (ushort)(packet[4] | packet[5] << 8);
             Log.DebugFormat("Client {0}:{1} requested Connection Info of ServerId {2}", client.Address, client.Port, serverId);

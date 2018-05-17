@@ -5,6 +5,7 @@
 namespace MUnique.OpenMU.Network.SimpleModulus
 {
     using System;
+    using System.Runtime.InteropServices;
 
     /// <summary>
     /// The standard encryptor (server-side) which encrypts 0xC3 and 0xC4-packets with the "simple modulus" algorithm.
@@ -50,7 +51,7 @@ namespace MUnique.OpenMU.Network.SimpleModulus
         }
 
         /// <inheritdoc/>
-        public byte[] Encrypt(byte[] packet)
+        public Span<byte> Encrypt(Span<byte> packet)
         {
             if (packet[0] < 0xC3)
             {
@@ -75,52 +76,54 @@ namespace MUnique.OpenMU.Network.SimpleModulus
             }
         }
 
-        private byte[] EncryptC3(byte[] data)
+        private Span<byte> EncryptC3(Span<byte> data)
         {
             var headerSize = data.GetPacketHeaderSize();
-            var contentSize = this.GetContentSize(data, true);
-            var contents = new byte[contentSize];
-            contents[0] = (byte)this.Counter.Count;
-            Buffer.BlockCopy(data, headerSize, contents, 1, contentSize - 1);
-            var result = new byte[this.GetEncryptedSize(data)];
-            this.EncodeBuffer(contents, headerSize, contentSize, result);
-            result[0] = data[0];
-            result.SetPacketSize();
+            var decryptedContentSize = this.GetContentSize(data, true);
+            var encryptedSize = this.GetEncryptedSize(data);
+            // var contents = new byte[decryptedContentSize];
+            // contents[0] = (byte)this.Counter.Count;
+            // data.Slice(headerSize, decryptedContentSize - 1).CopyTo(new Span<byte>(contents, 1, decryptedContentSize - 1)); // TODO: Remove copying
+            var inputSpan = data.Slice(headerSize - 1);
+            var previousValue = inputSpan[0];
+            inputSpan[0] = (byte)this.Counter.Count;
+            try
+            {
+                var resultArray = new byte[encryptedSize];
+                this.EncodeBuffer(inputSpan, decryptedContentSize, resultArray.AsSpan(headerSize));
+                resultArray[0] = data[0];
+                resultArray.AsSpan().SetPacketSize();
 
-            return result;
+                return resultArray;
+            }
+            finally
+            {
+                inputSpan[0] = previousValue;
+            }
         }
 
-        private int GetEncryptedSize(byte[] data)
+        private int GetEncryptedSize(Span<byte> data)
         {
             var contentSize = this.GetContentSize(data, true);
             return (((contentSize / DecryptedBlockSize) + (((contentSize % DecryptedBlockSize) > 0) ? 1 : 0)) * EncryptedBlockSize) + data.GetPacketHeaderSize();
         }
 
-        private void EncodeBuffer(byte[] inputBuffer, int offset, int size, byte[] result)
+        private void EncodeBuffer(Span<byte> inputBuffer, int size, Span<byte> result)
         {
             var i = 0;
             var sizeCounter = 0;
             while (i < size)
             {
-                Array.Clear(this.EncryptedBlockBuffer, 0, this.EncryptedBlockBuffer.Length);
-                if (i + DecryptedBlockSize < size)
-                {
-                    Buffer.BlockCopy(inputBuffer, i, this.DecryptedBlockBuffer, 0, DecryptedBlockSize);
-                    this.BlockEncode(this.EncryptedBlockBuffer, this.DecryptedBlockBuffer, DecryptedBlockSize);
-                }
-                else
-                {
-                    Buffer.BlockCopy(inputBuffer, i, this.DecryptedBlockBuffer, 0, size - i);
-                    this.BlockEncode(this.EncryptedBlockBuffer, this.DecryptedBlockBuffer, size - i);
-                }
-
-                Buffer.BlockCopy(this.EncryptedBlockBuffer, 0, result, offset + sizeCounter, EncryptedBlockSize);
+                var contentOfBlockLength = Math.Min(DecryptedBlockSize, size - i);
+                var decryptedBlock = inputBuffer.Slice(i, contentOfBlockLength);
+                var resultBlock = result.Slice(sizeCounter, EncryptedBlockSize);
+                this.BlockEncode(resultBlock, decryptedBlock, contentOfBlockLength);
                 i += DecryptedBlockSize;
                 sizeCounter += EncryptedBlockSize;
             }
         }
 
-        private void BlockEncode(byte[] outputBuffer, byte[] inputBuffer, int blockSize)
+        private void BlockEncode(Span<byte> outputBuffer, Span<byte> inputBuffer, int blockSize)
         {
             this.SetRingBuffer(inputBuffer, blockSize);
             this.ShiftBytes(outputBuffer, 0x00, this.RingBuffer[0], 0x00, 0x10);
@@ -140,7 +143,7 @@ namespace MUnique.OpenMU.Network.SimpleModulus
         /// <param name="blockSize">The size of the block of decrypted data in bytes.</param>
         /// <param name="inputBuffer">The input buffer with the incoming decrypted data..</param>
         /// <param name="outputBuffer">The output buffer to which the encrypted result will be written.</param>
-        private void EncodeFinal(int blockSize, byte[] inputBuffer, byte[] outputBuffer)
+        private void EncodeFinal(int blockSize, Span<byte> inputBuffer, Span<byte> outputBuffer)
         {
             byte size = (byte)(blockSize ^ BlockSizeXorKey);
             byte checksum = BlockCheckSumXorKey;
@@ -154,22 +157,27 @@ namespace MUnique.OpenMU.Network.SimpleModulus
             this.ShiftBytes(outputBuffer, 0x48, (uint)(checksum << 8 | size), 0x00, 0x10);
         }
 
-        private void SetRingBuffer(byte[] inputBuffer, int blockSize)
+        private void SetRingBuffer(Span<byte> inputBuffer, int blockSize)
         {
             var keys = this.encryptionKeys;
             Array.Clear(this.CryptBuffer, blockSize / 2, this.CryptBuffer.Length - (blockSize / 2)); // we don't need to clear the whole array since parts are getting overriden by the input buffer
-            Buffer.BlockCopy(inputBuffer, 0, this.CryptBuffer, 0, blockSize);
+            // Buffer.BlockCopy(inputBuffer, 0, this.CryptBuffer, 0, blockSize);
+            MemoryMarshal.Cast<byte, ushort>(inputBuffer.Slice(0, blockSize)).CopyTo(this.CryptBuffer);
+
             this.RingBuffer[0] = ((keys.XorKey[0] ^ this.CryptBuffer[0]) * keys.EncryptKey[0]) % keys.ModulusKey[0];
             this.RingBuffer[1] = ((keys.XorKey[1] ^ (this.CryptBuffer[1] ^ (this.RingBuffer[0] & 0xFFFF))) * keys.EncryptKey[1]) % keys.ModulusKey[1];
             this.RingBuffer[2] = ((keys.XorKey[2] ^ (this.CryptBuffer[2] ^ (this.RingBuffer[1] & 0xFFFF))) * keys.EncryptKey[2]) % keys.ModulusKey[2];
             this.RingBuffer[3] = ((keys.XorKey[3] ^ (this.CryptBuffer[3] ^ (this.RingBuffer[2] & 0xFFFF))) * keys.EncryptKey[3]) % keys.ModulusKey[3];
-            Buffer.BlockCopy(this.CryptBuffer, 0, inputBuffer, 0, blockSize);
+            // Buffer.BlockCopy(this.CryptBuffer, 0, inputBuffer, 0, blockSize);
+            MemoryMarshal.Cast<ushort, byte>(this.CryptBuffer.AsSpan(0, blockSize / 2)).CopyTo(inputBuffer.Slice(0, blockSize));
+
+
             this.RingBuffer[0] = this.RingBuffer[0] ^ keys.XorKey[0] ^ (this.RingBuffer[1] & 0xFFFF);
             this.RingBuffer[1] = this.RingBuffer[1] ^ keys.XorKey[1] ^ (this.RingBuffer[2] & 0xFFFF);
             this.RingBuffer[2] = this.RingBuffer[2] ^ keys.XorKey[2] ^ (this.RingBuffer[3] & 0xFFFF);
         }
 
-        private void ShiftBytes(byte[] outputBuffer, int outputOffset, uint shift, int shiftOffset, int length)
+        private void ShiftBytes(Span<byte> outputBuffer, int outputOffset, uint shift, int shiftOffset, int length)
         {
             int size = this.GetShiftSize(length, shiftOffset);
             this.ShiftBuffer[2] = 0; // the first two bytes will be set at the next statement

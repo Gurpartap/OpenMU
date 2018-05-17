@@ -127,7 +127,7 @@ namespace MUnique.OpenMU.ConnectServer
             }
         }
 
-        private void OnPacketReceived(object sender, byte[] packet)
+        private void OnPacketReceived(object sender, Span<byte> packet)
         {
             this.lastReceive = DateTime.Now;
         }

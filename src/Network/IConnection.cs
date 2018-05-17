@@ -11,7 +11,7 @@ namespace MUnique.OpenMU.Network
     /// </summary>
     /// <param name="sender">The sender.</param>
     /// <param name="packet">The packet.</param>
-    public delegate void PacketReceivedHandler(object sender, byte[] packet);
+    public delegate void PacketReceivedHandler(object sender, Span<byte> packet);
 
     /// <summary>
     /// A delegate which is executed when the connection got disconnected.

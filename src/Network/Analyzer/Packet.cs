@@ -42,12 +42,12 @@ namespace MUnique.OpenMU.Network.Analyzer
         /// <summary>
         /// Gets the code of the packet, which specifies the kind of the message.
         /// </summary>
-        public byte Code => this.innerData.GetPacketType();
+        public byte Code => this.innerData.AsSpan().GetPacketType();
 
         /// <summary>
         /// Gets the sub code of the packet, which further specifies the kind of the message, if specified.
         /// </summary>
-        public byte SubCode => this.innerData.GetPacketSubType();
+        public byte SubCode => this.innerData.AsSpan().GetPacketSubType();
 
         /// <summary>
         /// Gets the direction as string.
@@ -109,7 +109,7 @@ namespace MUnique.OpenMU.Network.Analyzer
                 case FieldType.Short:
                     return this.innerData.MakeWordSmallEndian(field.Index).ToString();
                 case FieldType.ShortBigEndian:
-                    return this.innerData.MakeWordBigEndian(field.Index).ToString();
+                    return this.innerData.AsSpan().MakeWordBigEndian(field.Index).ToString();
                 case FieldType.Long:
                     return this.innerData.MakeQword(field.Index).ToString();
                 case FieldType.LongBigEndian:

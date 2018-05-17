@@ -18,7 +18,7 @@ namespace MUnique.OpenMU.Network
         /// Dequeues the next packet of the queue. Returns null if there is no next packet available.
         /// </summary>
         /// <returns>The next packet, or null if not available.</returns>
-        public byte[] DequeueNextPacket()
+        public Span<byte> DequeueNextPacket()
         {
             var length = this.GetNextLength();
             if (length == 0)
@@ -51,7 +51,7 @@ namespace MUnique.OpenMU.Network
             this.Clear();
         }
 
-        private byte[] GetNextPacket(int length)
+        private Span<byte> GetNextPacket(int length)
         {
             var packet = new byte[length];
             for (int i = 0; i < length; i++)

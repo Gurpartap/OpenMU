@@ -4,6 +4,8 @@
 
 namespace MUnique.OpenMU.Network
 {
+    using System;
+
     /// <summary>
     /// This interface specifies a decryptor, which decrypts encrypted data packets.
     /// </summary>
@@ -14,7 +16,7 @@ namespace MUnique.OpenMU.Network
         /// </summary>
         /// <param name="packet">The encrypted data packet. The decrypted result will be written back to the same reference.</param>
         /// <returns>True, if successful; False, otherwise.</returns>
-        bool Decrypt(ref byte[] packet);
+        bool Decrypt(ref Span<byte> packet);
 
         /// <summary>
         /// Resets the state of the decryptor.

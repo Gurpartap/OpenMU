@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
+using MUnique.OpenMU.Network;
+
 namespace MUnique.OpenMU.ConnectServer.PacketHandler
 {
     using System;
@@ -33,7 +35,7 @@ namespace MUnique.OpenMU.ConnectServer.PacketHandler
         }
 
         /// <inheritdoc/>
-        public void HandlePacket(Client client, byte[] packet)
+        public void HandlePacket(Client client, Span<byte> packet)
         {
             try
             {
@@ -57,18 +59,18 @@ namespace MUnique.OpenMU.ConnectServer.PacketHandler
             {
                 if (Log.IsDebugEnabled)
                 {
-                    Log.DebugFormat("SocketException occured in Client.ReceivePacket, Client Address: {0}:{1}, Packet: [{2}], Exception: {3}", client.Address, client.Port, packet.ToHexString(), ex);
+                    Log.DebugFormat("SocketException occured in Client.ReceivePacket, Client Address: {0}:{1}, Packet: [{2}], Exception: {3}", client.Address, client.Port, packet.AsString(), ex);
                 }
             }
             catch (Exception ex)
             {
-                Log.WarnFormat("Exception occured in Client.ReceivePacket, Client Address: {0}:{1}, Packet: [{2}], Exception: {3}", client.Address, client.Port, packet.ToHexString(), ex);
+                Log.WarnFormat("Exception occured in Client.ReceivePacket, Client Address: {0}:{1}, Packet: [{2}], Exception: {3}", client.Address, client.Port, packet.AsString(), ex);
             }
         }
 
-        private void DisconnectClientUnknownPacket(Client client, byte[] packet)
+        private void DisconnectClientUnknownPacket(Client client, Span<byte> packet)
         {
-            Log.InfoFormat("Client {0}:{1} will be disconnected because it sent an unknown packet: {2}", client.Address, client.Port, packet.ToHexString());
+            Log.InfoFormat("Client {0}:{1} will be disconnected because it sent an unknown packet: {2}", client.Address, client.Port, packet.AsString());
             client.Connection.Disconnect();
         }
     }

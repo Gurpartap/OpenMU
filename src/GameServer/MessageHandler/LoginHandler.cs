@@ -66,13 +66,15 @@ namespace MUnique.OpenMU.GameServer.MessageHandler
 
         private void ReadLoginPacket(Player player, byte[] packet)
         {
-            byte[] userbytes = new byte[10];
-            byte[] pass = new byte[this.gameContext.Configuration.MaximumPasswordLength];
-            Array.Copy(packet, 4, userbytes, 0, 10);
-            Array.Copy(packet, 14, pass, 0, this.gameContext.Configuration.MaximumPasswordLength);
-
+            //byte[] userbytes = new byte[10];
+            //byte[] pass = new byte[this.gameContext.Configuration.MaximumPasswordLength];
+            // Array.Copy(packet, 4, userbytes, 0, 10);
+            // Array.Copy(packet, 14, pass, 0, this.gameContext.Configuration.MaximumPasswordLength);
+            var userbytes = packet.AsSpan(4, 10);
+            var pass = packet.AsSpan(14, this.gameContext.Configuration.MaximumPasswordLength);
             this.decryptor.Decrypt(ref userbytes);
             this.decryptor.Decrypt(ref pass);
+            
             string username = userbytes.ExtractString(0, 10, Encoding.UTF8);
             string password = pass.ExtractString(0, this.gameContext.Configuration.MaximumPasswordLength, Encoding.UTF8);
 

@@ -33,13 +33,13 @@ namespace MUnique.OpenMU.Network.Tests
             buffer.AddRange(packet2);
 
             var dequeued = buffer.DequeueNextPacket();
-            Assert.That(dequeued, Is.Not.Null);
+            Assert.That(dequeued.ToArray(), Is.Not.Empty);
             dequeued = buffer.DequeueNextPacket();
-            Assert.That(dequeued, Is.Not.Null);
+            Assert.That(dequeued.ToArray(), Is.Not.Empty);
             dequeued = buffer.DequeueNextPacket();
-            Assert.That(dequeued, Is.Not.Null);
+            Assert.That(dequeued.ToArray(), Is.Not.Empty);
             dequeued = buffer.DequeueNextPacket();
-            Assert.That(dequeued, Is.Null);
+            Assert.That(dequeued.ToArray(), Is.Empty);
         }
 
         /// <summary>
@@ -67,7 +67,7 @@ namespace MUnique.OpenMU.Network.Tests
             var packet = new byte[] { 0xC1, 4, 255 };
             buffer.AddRange(packet);
             var dequeued = buffer.DequeueNextPacket();
-            Assert.That(dequeued, Is.Null);
+            Assert.That(dequeued.ToArray(), Is.Empty);
         }
 
         /// <summary>
@@ -80,7 +80,7 @@ namespace MUnique.OpenMU.Network.Tests
             var packet = new byte[] { 0xC1, 4, 255, 0 };
             buffer.AddRange(packet);
             var dequeued = buffer.DequeueNextPacket();
-            Assert.That(dequeued, Is.Not.Null);
+            Assert.That(dequeued.ToArray(), Is.Not.Empty);
         }
     }
 }

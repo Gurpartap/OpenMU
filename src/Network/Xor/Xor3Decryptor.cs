@@ -4,6 +4,8 @@
 
 namespace MUnique.OpenMU.Network.Xor
 {
+    using System;
+
     /// <summary>
     /// A decryptor which XOR-decrypts data using a 3-byte key.
     /// </summary>
@@ -19,7 +21,7 @@ namespace MUnique.OpenMU.Network.Xor
         }
 
         /// <inheritdoc/>
-        public bool Decrypt(ref byte[] packet)
+        public bool Decrypt(ref Span<byte> packet)
         {
             packet = this.InternalEncrypt(packet);
             return true;

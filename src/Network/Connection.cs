@@ -87,7 +87,7 @@ namespace MUnique.OpenMU.Network
 
                     if (this.encryptor != null)
                     {
-                        packet = this.encryptor.Encrypt(packet);
+                        packet = this.encryptor.Encrypt(packet).ToArray();
                     }
 
                     if (this.log.IsDebugEnabled)

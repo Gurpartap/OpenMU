@@ -105,10 +105,10 @@ namespace MUnique.OpenMU.Network.PacketTwister
         }
 
         /// <inheritdoc/>
-        public byte[] Encrypt(byte[] packet)
+        public Span<byte> Encrypt(Span<byte> packet)
         {
             var packetType = packet.GetPacketType();
-            var data = new ArraySegment<byte>(packet, packet.GetPacketHeaderSize() + 1);
+            var data = packet.Slice(packet.GetPacketHeaderSize() + 1);
             if (this.twisters.TryGetValue(packetType, out IPacketTwister twister))
             {
                 twister.Twist(data);
@@ -118,10 +118,10 @@ namespace MUnique.OpenMU.Network.PacketTwister
         }
 
         /// <inheritdoc/>
-        public bool Decrypt(ref byte[] packet)
+        public bool Decrypt(ref Span<byte> packet)
         {
             var packetType = packet.GetPacketType();
-            var data = new ArraySegment<byte>(packet, packet.GetPacketHeaderSize() + 1);
+            var data = packet.Slice(packet.GetPacketHeaderSize() + 1);
             if (this.twisters.TryGetValue(packetType, out IPacketTwister twister))
             {
                 twister.Correct(data);

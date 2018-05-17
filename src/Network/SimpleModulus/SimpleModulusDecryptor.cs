@@ -5,6 +5,7 @@
 namespace MUnique.OpenMU.Network.SimpleModulus
 {
     using System;
+    using System.Runtime.InteropServices;
     using log4net;
 
     /// <summary>
@@ -59,7 +60,7 @@ namespace MUnique.OpenMU.Network.SimpleModulus
         public bool AcceptWrongBlockChecksum { get; set; }
 
         /// <inheritdoc/>
-        public bool Decrypt(ref byte[] packet)
+        public bool Decrypt(ref Span<byte> packet)
         {
             if (packet[0] < 0xC3)
             {
@@ -76,23 +77,25 @@ namespace MUnique.OpenMU.Network.SimpleModulus
             return result;
         }
 
-        private byte DecryptC3(ref byte[] data)
+        private byte DecryptC3(ref Span<byte> data)
         {
             var contentSize = this.GetContentSize(data, false);
-            var headerSize = data.GetPacketHeaderSize();
-            var result = new byte[this.GetMaximumDecryptedSize(data)];
-            var decryptedSize = this.DecodeBuffer(data, headerSize, contentSize, result);
-            decryptedSize += headerSize - 1;
-            var decryptedCount = result[headerSize - 1];
-            result[0] = data[0];
-            Array.Resize(ref result, decryptedSize);
-            result.SetPacketSize();
-            data = result;
+            var encryptedHeaderSize = data.GetPacketHeaderSize();
+            var decryptedHeaderSize = encryptedHeaderSize - 1;
+
+            var resultArray = new byte[this.GetMaximumDecryptedSize(data)];
+
+            var decryptedContentSize = this.DecodeBuffer(data, encryptedHeaderSize, contentSize, resultArray);
+            decryptedContentSize += decryptedHeaderSize;
+            var decryptedCount = resultArray[decryptedHeaderSize];
+            resultArray[0] = data[0];
+            data = resultArray.AsSpan(0, decryptedContentSize);
+            data.SetPacketSize();
 
             return decryptedCount;
         }
 
-        private int DecodeBuffer(byte[] inputBuffer, int offset, int size, byte[] result)
+        private int DecodeBuffer(Span<byte> inputBuffer, int offset, int size, Span<byte> result)
         {
             int sizeCounter = 0;
             if ((size % EncryptedBlockSize) != 0)
@@ -102,11 +105,11 @@ namespace MUnique.OpenMU.Network.SimpleModulus
 
             for (int i = 0; i < size; i += EncryptedBlockSize)
             {
-                Buffer.BlockCopy(inputBuffer, i + offset, this.EncryptedBlockBuffer, 0, EncryptedBlockSize);
-                var blockSize = this.BlockDecode(this.DecryptedBlockBuffer, this.EncryptedBlockBuffer);
+                var encryptedBlock = inputBuffer.Slice(i + offset, EncryptedBlockSize);
+                var resultBlock = result.Slice((offset - 1) + sizeCounter, DecryptedBlockSize);
+                var blockSize = this.BlockDecode(resultBlock, encryptedBlock);
                 if (blockSize != -1)
                 {
-                    Buffer.BlockCopy(this.DecryptedBlockBuffer, 0, result, (offset - 1) + sizeCounter, blockSize);
                     sizeCounter += blockSize;
                 }
             }
@@ -120,7 +123,7 @@ namespace MUnique.OpenMU.Network.SimpleModulus
         /// <param name="outputBuffer">The output buffer array.</param>
         /// <param name="inputBuffer">The input buffer array. Contains the data which should be decrypted.</param>
         /// <returns>The decrypted length of the block.</returns>
-        private int BlockDecode(byte[] outputBuffer, byte[] inputBuffer)
+        private int BlockDecode(Span<byte> outputBuffer, Span<byte> inputBuffer)
         {
             this.ClearShiftBuffer();
             this.ShiftBytes(this.ShiftBuffer, 0x00, inputBuffer, 0x00, 0x10);
@@ -158,7 +161,7 @@ namespace MUnique.OpenMU.Network.SimpleModulus
         /// <param name="inputBuffer">The input buffer array. Contains the data which should be decrypted.</param>
         /// <param name="outputBuffer">The output buffer array.</param>
         /// <returns>The decrypted length of the block.</returns>
-        private int DecodeFinal(byte[] inputBuffer, byte[] outputBuffer)
+        private int DecodeFinal(Span<byte> inputBuffer, Span<byte> outputBuffer)
         {
             this.ClearShiftBuffer();
             this.ShiftBytes(this.ShiftBuffer, 0x00, inputBuffer, 0x48, 0x10);
@@ -166,7 +169,7 @@ namespace MUnique.OpenMU.Network.SimpleModulus
             // ShiftBuffer[0] -> block size (decrypted)
             // ShiftBuffer[1] -> checksum
             byte blockSize = (byte)(this.ShiftBuffer[0] ^ this.ShiftBuffer[1] ^ BlockSizeXorKey);
-            Buffer.BlockCopy(this.CryptBuffer, 0, outputBuffer, 0, blockSize);
+            MemoryMarshal.Cast<ushort, byte>(this.CryptBuffer).CopyTo(outputBuffer);
             byte checksum = BlockCheckSumXorKey;
             for (int i = 0; i < blockSize; i++)
             {
@@ -190,13 +193,13 @@ namespace MUnique.OpenMU.Network.SimpleModulus
             return blockSize;
         }
 
-        private void ShiftBytes(byte[] outputBuffer, int outputOffset, byte[] inputBuffer, int shiftOffset, int length)
+        private void ShiftBytes(Span<byte> outputBuffer, int outputOffset, Span<byte> inputBuffer, int shiftOffset, int length)
         {
             int size = this.GetShiftSize(length, shiftOffset);
             this.shiftArray[1] = 0;
             this.shiftArray[2] = 0;
             this.shiftArray[3] = 0;
-            Array.Copy(inputBuffer, shiftOffset / DecryptedBlockSize, this.shiftArray, 0, size);
+            inputBuffer.Slice(shiftOffset / DecryptedBlockSize, size).CopyTo(this.shiftArray);
 
             var tempShift = (length + shiftOffset) & 0x7;
             if (tempShift != 0)
@@ -213,7 +216,7 @@ namespace MUnique.OpenMU.Network.SimpleModulus
         /// </summary>
         /// <param name="packet">The encrypted packet.</param>
         /// <returns>The maximum packet size of the packet in decrypted state.</returns>
-        private int GetMaximumDecryptedSize(byte[] packet)
+        private int GetMaximumDecryptedSize(Span<byte> packet)
         {
             return ((this.GetContentSize(packet, false) / EncryptedBlockSize) * DecryptedBlockSize) + packet.GetPacketHeaderSize() - 1;
         }

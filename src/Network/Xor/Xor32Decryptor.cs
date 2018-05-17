@@ -4,6 +4,8 @@
 
 namespace MUnique.OpenMU.Network.Xor
 {
+    using System;
+
     /// <summary>
     /// Decryptor which uses a 32 byte key for a xor encryption.
     /// It's typically used to decrypt packets sent by the client to the server.
@@ -31,7 +33,7 @@ namespace MUnique.OpenMU.Network.Xor
         }
 
         /// <inheritdoc />
-        public bool Decrypt(ref byte[] packet)
+        public bool Decrypt(ref Span<byte> packet)
         {
             var headerSize = packet.GetPacketHeaderSize();
             for (var i = packet.Length - 1; i > headerSize; i--)

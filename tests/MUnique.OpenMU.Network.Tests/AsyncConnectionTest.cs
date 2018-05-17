@@ -8,8 +8,9 @@ namespace MUnique.OpenMU.Network.Tests
     using System.Net;
     using System.Net.Sockets;
     using System.Threading;
-
     using NUnit.Framework;
+    using Connection = OpenMU.Network.Connection;
+    using IConnection = OpenMU.Network.IConnection;
 
     /// <summary>
     /// Test of the async connection implementation.

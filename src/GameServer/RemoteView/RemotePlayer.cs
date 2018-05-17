@@ -9,6 +9,7 @@ namespace MUnique.OpenMU.GameServer.RemoteView
     using MUnique.OpenMU.GameLogic;
     using MUnique.OpenMU.GameServer.MessageHandler;
     using MUnique.OpenMU.Network;
+    using IConnection = MUnique.OpenMU.Network.IConnection;
 
     /// <summary>
     /// A player which is playing though a remote connection.
@@ -29,7 +30,7 @@ namespace MUnique.OpenMU.GameServer.RemoteView
             this.PlayerView = new RemoteView(connection, this, gameContext, new AppearanceSerializer());
             this.Connection = connection;
             this.MainPacketHandler = packetHandler;
-            this.Connection.PacketReceived += (sender, packet) => this.PacketReceived(packet);
+            this.Connection.PacketReceived += (sender, packet) => this.PacketReceived(packet.ToArray()); // TODO: Remove ToArray
             this.Connection.Disconnected += (sender, packet) => this.Disconnect();
         }
 

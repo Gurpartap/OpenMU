@@ -101,7 +101,7 @@ namespace MUnique.OpenMU.ChatServer
             packet[3] = senderId;
             packet[4] = (byte)messageByteLength;
             Encoding.UTF8.GetBytes(message, 0, message.Length, packet, 5);
-            MessageEncryptor.Encrypt(packet);
+            MessageEncryptor.Encrypt(packet.AsSpan());
             this.connection.Send(packet);
         }
 
@@ -175,7 +175,7 @@ namespace MUnique.OpenMU.ChatServer
             return $"Connection:{this.connection}, Client name:{this.Nickname}, Room-ID:{this.room?.RoomId}, Index: {this.Index}";
         }
 
-        private void PacketReceived(byte[] packet)
+        private void PacketReceived(Span<byte> packet)
         {
             if (packet.Length < 3 || packet[0] != 0xC1)
             {
@@ -221,12 +221,12 @@ namespace MUnique.OpenMU.ChatServer
             }
         }
 
-        private bool CheckMessage(byte[] packet)
+        private bool CheckMessage(Span<byte> packet)
         {
             return packet[1] == packet.Length && (packet[4] + 5) == packet.Length;
         }
 
-        private void Authenticate(byte[] packet)
+        private void Authenticate(Span<byte> packet)
         {
             var roomid = NumberConversionExtensions.MakeWord(packet[4], packet[5]);
             var requestedRoom = this.manager.GetChatRoom(roomid);

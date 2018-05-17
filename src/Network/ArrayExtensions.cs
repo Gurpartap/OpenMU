@@ -44,11 +44,15 @@ namespace MUnique.OpenMU.Network
         /// <param name="maximumBytes">The maximum length.</param>
         /// <param name="encoding">The encoding.</param>
         /// <returns>The resulting string.</returns>
-        public static string ExtractString(this byte[] array, int startIndex, int maximumBytes, Encoding encoding)
+        public static string ExtractString(this Span<byte> span, int startIndex, int maximumBytes, Encoding encoding)
         {
-            int count = array.Skip(startIndex).Take(maximumBytes).TakeWhile(b => b != 0).Count();
+            var array = span.Slice(startIndex).ToArray();
+            int count = array.Take(maximumBytes).TakeWhile(b => b != 0).Count();
             return encoding.GetString(array, startIndex, count);
         }
+
+        public static string ExtractString(this byte[] array, int startIndex, int maximumBytes, Encoding encoding) =>
+            array.AsSpan(startIndex).ExtractString(0, maximumBytes, encoding);
 
         /// <summary>
         /// Determines whether the specified other array is equal.
@@ -56,7 +60,7 @@ namespace MUnique.OpenMU.Network
         /// <param name="array">The array.</param>
         /// <param name="otherArray">The other array.</param>
         /// <returns>True, if all elements of the other array match with this array.</returns>
-        public static bool IsEqual(this byte[] array, byte[] otherArray)
+            public static bool IsEqual(this byte[] array, byte[] otherArray)
         {
             if (array.Length != otherArray.Length)
             {
@@ -79,9 +83,16 @@ namespace MUnique.OpenMU.Network
         /// </summary>
         /// <param name="bytes">The bytes.</param>
         /// <returns>The HEX string.</returns>
+        public static string AsString(this Span<byte> bytes) => bytes.ToArray().AsString();
+
+        /// <summary>
+        /// Converts the byte array into a readable HEX string.
+        /// </summary>
+        /// <param name="bytes">The bytes.</param>
+        /// <returns>The HEX string.</returns>
         public static string AsString(this byte[] bytes)
         {
-            return BitConverter.ToString(bytes).Replace('-', ' ');
+            return BitConverter.ToString(bytes.ToArray()).Replace('-', ' ');
         }
 
         /// <summary>
@@ -149,26 +160,26 @@ namespace MUnique.OpenMU.Network
         }
 
         /// <summary>
-        /// Converts bytes of an array to an unsigned short, big endian.
+        /// Converts bytes of an span to an unsigned short, big endian.
         /// </summary>
-        /// <param name="array">The array.</param>
+        /// <param name="span">The span.</param>
         /// <param name="startIndex">The start index.</param>
         /// <returns>An unsigned short.</returns>
-        public static ushort MakeWordBigEndian(this byte[] array, int startIndex)
+        public static ushort MakeWordBigEndian(this Span<byte> span, int startIndex)
         {
-            return (ushort)((array[startIndex + 1] << 8) | array[startIndex]);
+            return (ushort)((span[startIndex + 1] << 8) | span[startIndex]);
         }
 
         /// <summary>
-        /// Converts bytes of an array to an unsigned short, big endian.
-        /// If the array is not long enough, it returns 0.
+        /// Converts bytes of an span to an unsigned short, big endian.
+        /// If the span is not long enough, it returns 0.
         /// </summary>
-        /// <param name="array">The array.</param>
+        /// <param name="span">The span.</param>
         /// <param name="startIndex">The start index.</param>
         /// <returns>An unsigned short.</returns>
-        public static ushort TryMakeWordBigEndian(this byte[] array, int startIndex)
+        public static ushort TryMakeWordBigEndian(this Span<byte> span, int startIndex)
         {
-            return array.Length > startIndex + 1 ? array.MakeWordBigEndian(startIndex) : default(ushort);
+            return span.Length > startIndex + 1 ? span.MakeWordBigEndian(startIndex) : default(ushort);
         }
 
         /// <summary>
@@ -300,7 +311,7 @@ namespace MUnique.OpenMU.Network
         /// </summary>
         /// <param name="packet">The packet.</param>
         /// <returns>The size of the header.</returns>
-        public static int GetPacketHeaderSize(this byte[] packet)
+        public static int GetPacketHeaderSize(this ReadOnlySpan<byte> packet)
         {
             switch (packet[0])
             {
@@ -316,11 +327,19 @@ namespace MUnique.OpenMU.Network
         }
 
         /// <summary>
+        /// Gets the size of the packet header.
+        /// </summary>
+        /// <param name="packet">The packet.</param>
+        /// <returns>The size of the header.</returns>
+        public static int GetPacketHeaderSize(this Span<byte> packet) => ((ReadOnlySpan<byte>)packet).GetPacketHeaderSize();
+        public static int GetPacketHeaderSize(this byte[] packet) => ((ReadOnlySpan<byte>)packet).GetPacketHeaderSize();
+
+        /// <summary>
         /// Gets the type of the packet. This only works when the packet type is not encrypted.
         /// </summary>
         /// <param name="packet">The packet.</param>
         /// <returns>The type of the packet.</returns>
-        public static byte GetPacketType(this byte[] packet)
+        public static byte GetPacketType(this Span<byte> packet)
         {
             return packet[packet.GetPacketHeaderSize()];
         }
@@ -330,7 +349,7 @@ namespace MUnique.OpenMU.Network
         /// </summary>
         /// <param name="packet">The packet.</param>
         /// <returns>The sub type of the packet.</returns>
-        public static byte GetPacketSubType(this byte[] packet)
+        public static byte GetPacketSubType(this Span<byte> packet)
         {
             return packet[packet.GetPacketHeaderSize() + 1];
         }
@@ -342,7 +361,7 @@ namespace MUnique.OpenMU.Network
         /// </summary>
         /// <param name="packet">The packet.</param>
         /// <returns>The size of a packet.</returns>
-        public static int GetPacketSize(this byte[] packet)
+        public static int GetPacketSize(this Span<byte> packet)
         {
             switch (packet[0])
             {
@@ -361,7 +380,7 @@ namespace MUnique.OpenMU.Network
         /// Sets the size of the byte array as packet length in the corresponding indexes of the byte array.
         /// </summary>
         /// <param name="packet">The packet.</param>
-        public static void SetPacketSize(this byte[] packet)
+        public static void SetPacketSize(this Span<byte> packet)
         {
             var size = packet.Length;
             switch (packet[0])

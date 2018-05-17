@@ -18,7 +18,7 @@ namespace MUnique.OpenMU.Network
         private readonly ICollection<IDecryptor> decryptors = new List<IDecryptor>(2);
 
         /// <inheritdoc />
-        public bool Decrypt(ref byte[] packet)
+        public bool Decrypt(ref Span<byte> packet)
         {
             try
             {

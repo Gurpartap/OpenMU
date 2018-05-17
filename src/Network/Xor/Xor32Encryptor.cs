@@ -38,7 +38,7 @@ namespace MUnique.OpenMU.Network.Xor
         }
 
         /// <inheritdoc />
-        public byte[] Encrypt(byte[] packet)
+        public Span<byte> Encrypt(Span<byte> packet)
         {
             int headerSize = packet.GetPacketHeaderSize();
             for (int i = headerSize + 1; i < packet.Length; i++)
